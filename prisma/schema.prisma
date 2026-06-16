@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Repository {
+  id          String   @id @default(cuid())
+  githubUrl   String   @unique
+  owner       String
+  name        String
+  stars       Int      @default(0)
+  language    String?
+  analyzedAt  DateTime @default(now())
+  modules     Module[]
+  issues      Issue[]
+}
+
+model Module {
+  id             String     @id @default(cuid())
+  repositoryId   String
+  repository     Repository @relation(fields: [repositoryId], references: [id])
+  name           String       // e.g. "Authentication", "API", "Frontend"
+  path           String       // e.g. "src/auth/"
+  fileCount      Int        @default(0)
+  issueCount     Int        @default(0)
+  files          RepoFile[]
+}
+
+model RepoFile {
+  id          String  @id @default(cuid())
+  moduleId    String
+  module      Module  @relation(fields: [moduleId], references: [id])
+  path        String    // full file path
+  language    String?
+  imports     String[]  // paths this file imports
+  summary     String?   // AI-generated one-liner
+  embedding   Float[]   // pgvector embedding for RAG
+}
+
+model Issue {
+  id              String     @id @default(cuid())
+  repositoryId    String
+  repository      Repository @relation(fields: [repositoryId], references: [id])
+  githubNumber    Int
+  title           String
+  body            String?
+  labels          String[]
+  state           String     @default("open")
+  predictedFiles  Json?      // [{path: string, confidence: number}]
+}
